@@ -151,7 +151,7 @@ export default function AdminDashboardPage() {
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? "..." : `$${stats.totalPayments * 25}`}</div>
+                <div className="text-2xl font-bold">{isLoading ? "..." : `$₹{stats.totalPayments * 25}`}</div>
                 <p className="text-xs text-muted-foreground">From {stats.totalPayments} payments</p>
               </CardContent>
             </Card>

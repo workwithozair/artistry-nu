@@ -1,6 +1,7 @@
 // pages/api/findOrCreateUser.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { adminDb } from '@/lib/firebase-admin'; // Your Firebase Admin config
+import { db } from '@/lib/firebase/server'; // Your Firebase Admin config
+import { FieldValue } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(
@@ -21,7 +22,7 @@ export default async function handler(
   try {
     // 2. Use Admin SDK to bypass security rules
     const userEmail = email.trim().toLowerCase();
-    const usersRef = adminDb.collection('users');
+    const usersRef = db.collection('users');
     
     // Query with Admin privileges
     const snapshot = await usersRef.where('email', '==', userEmail).get();
@@ -41,7 +42,7 @@ export default async function handler(
       email: userEmail,
       name: name || '',
       image: image || '',
-      createdAt: adminDb.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     });
 
     res.json({

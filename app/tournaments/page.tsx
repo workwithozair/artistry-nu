@@ -80,7 +80,7 @@ export default async function TournamentsPage() {
                   </div>
                   <div className="flex items-center text-sm">
                     <DollarSign className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <span>Entry Fee: ${tournament.entry_fee}</span>
+                    <span>Entry Fee: ₹{tournament.entry_fee}</span>
                   </div>
                 </div>
               </CardContent>

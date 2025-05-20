@@ -66,7 +66,7 @@ export default async function DashboardSubmissionsPage() {
                             variant={
                               submission.status === "completed"
                                 ? "default"
-                                : submission.status === "pending_review"
+                                : submission.status === "pending"
                                   ? "secondary"
                                   : "outline"
                             }
@@ -74,7 +74,9 @@ export default async function DashboardSubmissionsPage() {
                             {formatStatus(submission.status)}
                           </Badge>
                         </div>
-                        <div>{new Date(submission.created_at).toLocaleDateString()}</div>
+                        <div>{submission.created_at
+            ? new Date(submission.created_at._seconds * 1000).toLocaleString()
+            : "N/A"}</div>
                         <div className="flex justify-end">
                           <Link href={`/dashboard/submissions/${submission.id}`}>
                             <Button variant="outline" size="sm">

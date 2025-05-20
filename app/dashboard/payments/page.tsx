@@ -12,7 +12,8 @@ export default async function DashboardPaymentsPage() {
     redirect("/login")
   }
 
-  const payments = await getPaymentsByUserId(session.user.id)
+  const payments: any[] = await getPaymentsByUserId(session.user.id)
+  console.log(payments)
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -38,21 +39,21 @@ export default async function DashboardPaymentsPage() {
               <div className="divide-y">
                 {payments.map((payment) => (
                   <div key={payment.id} className="grid grid-cols-5 items-center p-4">
-                    <div className="font-medium">{payment.tournaments?.title}</div>
-                    <div>${payment.amount.toFixed(2)}</div>
-                    <div>{new Date(payment.payment_date).toLocaleDateString()}</div>
+                    <div className="font-medium">{payment.tournament?.title}</div>
+                    <div>₹{(payment.paid_amount / 100).toFixed(2)}</div>
+                    <div>{new Date(payment.payment_date._seconds * 1000).toLocaleString()}</div>
                     <div className="capitalize">{payment.payment_method.replace("_", " ")}</div>
                     <div>
                       <Badge
                         variant={
-                          payment.status === "completed"
+                          payment.payment_status === "paid"
                             ? "default"
-                            : payment.status === "pending"
+                            : payment.payment_status === "pending"
                               ? "outline"
                               : "destructive"
                         }
                       >
-                        {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                        {payment.payment_status ? payment.payment_status.charAt(0).toUpperCase() + payment.payment_status.slice(1) : "Unpaid"}
                       </Badge>
                     </div>
                   </div>

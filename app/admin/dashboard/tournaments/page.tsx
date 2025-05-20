@@ -144,7 +144,7 @@ export default function AdminTournamentsPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <p className="text-sm font-medium">Entry Fee</p>
-                      <p className="text-sm text-muted-foreground">${tournament.entry_fee}</p>
+                      <p className="text-sm text-muted-foreground">₹{tournament.entry_fee}</p>
                     </div>
                     <div className="flex justify-between">
                       <p className="text-sm font-medium">Category</p>

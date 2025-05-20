@@ -80,7 +80,7 @@ export default function StaticDashboardPage() {
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$0.00</div>
+                <div className="text-2xl font-bold">₹0.00</div>
                 <p className="text-xs text-muted-foreground">Total spent</p>
               </CardContent>
             </Card>
@@ -154,7 +154,7 @@ export default function StaticDashboardPage() {
                       <div className="rounded-full bg-muted px-3 py-1 text-xs">
                         Deadline: {new Date(tournament.submission_deadline).toLocaleDateString()}
                       </div>
-                      <div className="rounded-full bg-muted px-3 py-1 text-xs">Entry Fee: ${tournament.entry_fee}</div>
+                      <div className="rounded-full bg-muted px-3 py-1 text-xs">Entry Fee: ₹{tournament.entry_fee}</div>
                     </div>
                     {tournament.status === "open" && (
                       <div className="mt-2">

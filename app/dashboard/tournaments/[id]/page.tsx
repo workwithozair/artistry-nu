@@ -68,7 +68,7 @@ export default async function TournamentDetailPage({ params }: { params: { id: s
             </div>
             <div className="space-y-2">
               <h3 className="font-medium">Entry Fee</h3>
-              <p className="text-sm text-muted-foreground">${tournament.entry_fee}</p>
+              <p className="text-sm text-muted-foreground">₹{tournament.entry_fee}</p>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium">Status</h3>

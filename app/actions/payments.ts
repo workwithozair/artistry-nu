@@ -1,127 +1,119 @@
 "use server"
 
-import { createServerClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { db } from "@/lib/firebase/server"
+
+
+export async function getPaymentDetailsBySubmission(tournamentId: string, submissionId: string) {
+  try {
+    if (!tournamentId || !submissionId) {
+      return {
+        success: false,
+        message: "Missing tournamentId or submissionId",
+      }
+    }
+
+    // 1. Fetch the submission document
+    const submissionSnap = await db.collection("submissions").doc(submissionId).get()
+    if (!submissionSnap.exists) {
+      return {
+        success: false,
+        message: "Submission not found",
+      }
+    }
+
+    const submission = submissionSnap.data() as any
+
+    // 2. Validate submission belongs to this tournament and is paid
+    if (
+      submission.tournament_id !== tournamentId ||
+      submission.payment_status !== "paid"
+    ) {
+      return {
+        success: false,
+        message: "Invalid tournament ID or unpaid submission",
+      }
+    }
+
+    // 3. Fetch the tournament document
+    const tournamentSnap = await db.collection("tournaments").doc(tournamentId).get()
+    if (!tournamentSnap.exists) {
+      return {
+        success: false,
+        message: "Tournament not found",
+      }
+    }
+
+    const tournament = tournamentSnap.data() as any
+
+    // 4. Format the response
+    const paymentDetails = {
+      submission_id: submissionId,
+      tournament_id: tournamentId,
+      title: submission.title,
+      applicant_name: submission.applicant_name,
+      phone_number: submission.phone_number,
+      amount_paid: submission.amount_paid,
+      payment_date: submission.payment_date,
+      razorpay_payment_id: submission.razorpay_payment_id,
+      razorpay_order_id: submission.razorpay_order_id,
+      tournament: {
+        id: tournamentSnap.id,
+        title: tournament.title,
+        entry_fee: tournament.entry_fee,
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
+      },
+    }
+
+    return {
+      success: true,
+      payment: paymentDetails,
+    }
+  } catch (error) {
+    console.error("Error in getPaymentDetailsBySubmission:", error)
+    return {
+      success: false,
+      message: "Internal server error",
+    }
+  }
+}
+
 
 export async function getUserPayments(userId: string) {
   try {
-    const supabase = createServerClient()
+    const paymentsRef = db.collection("payments")
+    const snapshot = await paymentsRef
+      .where("user_id", "==", userId)
+      .orderBy("payment_date", "desc")
+      .get()
 
-    const { data, error } = await supabase
-      .from("payments")
-      .select(`
-        *,
-        tournaments:tournament_id (
-          id,
-          title,
-          entry_fee
-        )
-      `)
-      .eq("user_id", userId)
-      .order("payment_date", { ascending: false })
+    const payments = await Promise.all(
+      snapshot.docs.map(async (docSnap) => {
+        const payment = docSnap.data()
+        const tournamentId = payment.tournament_id
 
-    if (error) {
-      console.error("Error fetching user payments:", error)
-      return []
-    }
+        let tournament = null
+        if (tournamentId) {
+          const tournamentSnap = await db.collection("tournaments").doc(tournamentId).get()
+          if (tournamentSnap.exists) {
+            tournament = tournamentSnap.data() as { id?: string }
+            tournament.id = tournamentSnap.id
+          }
+        }
 
-    return data || []
+        return {
+          id: docSnap.id,
+          ...payment,
+          tournament,
+        }
+      })
+    )
+
+    return payments
   } catch (error) {
     console.error("Error in getUserPayments:", error)
     return []
   }
 }
 
-// Add the missing export as an alias to getUserPayments
 export const getPaymentsByUserId = getUserPayments
-
-export async function processPayment(formData: FormData) {
-  try {
-    const tournamentId = formData.get("tournamentId") as string
-    const userId = formData.get("userId") as string
-    const paymentMethod = formData.get("paymentMethod") as string
-
-    if (!tournamentId || !userId || !paymentMethod) {
-      return {
-        success: false,
-        message: "Missing required fields",
-      }
-    }
-
-    const supabase = createServerClient()
-
-    // Get tournament details to get the entry fee
-    const { data: tournament, error: tournamentError } = await supabase
-      .from("tournaments")
-      .select("entry_fee")
-      .eq("id", tournamentId)
-      .single()
-
-    if (tournamentError || !tournament) {
-      console.error("Error fetching tournament:", tournamentError)
-      return {
-        success: false,
-        message: "Error fetching tournament details",
-      }
-    }
-
-    // Check if payment already exists
-    const { data: existingPayment, error: checkError } = await supabase
-      .from("payments")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("tournament_id", tournamentId)
-      .eq("status", "completed")
-      .maybeSingle()
-
-    if (checkError) {
-      console.error("Error checking payment:", checkError)
-      return {
-        success: false,
-        message: "Error checking payment status",
-      }
-    }
-
-    if (existingPayment) {
-      return {
-        success: false,
-        message: "Payment already processed for this tournament",
-      }
-    }
-
-    // In a real application, you would integrate with a payment gateway here
-    // For now, we'll just simulate a successful payment
-
-    // Create payment record
-    const { error: paymentError } = await supabase.from("payments").insert({
-      user_id: userId,
-      tournament_id: tournamentId,
-      amount: tournament.entry_fee,
-      status: "completed",
-      payment_date: new Date().toISOString(),
-      payment_method: paymentMethod,
-      transaction_id: "txn_" + Math.random().toString(36).substring(2, 12),
-    })
-
-    if (paymentError) {
-      console.error("Error creating payment:", paymentError)
-      return {
-        success: false,
-        message: "Error processing payment",
-      }
-    }
-
-    revalidatePath("/dashboard/payments")
-
-    return {
-      success: true,
-      message: "Payment processed successfully",
-    }
-  } catch (error) {
-    console.error("Error in processPayment:", error)
-    return {
-      success: false,
-      message: "An unexpected error occurred",
-    }
-  }
-}

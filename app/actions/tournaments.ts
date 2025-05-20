@@ -3,6 +3,8 @@
 import { db } from "@/lib/firebase/server"
 import { revalidatePath } from "next/cache"
 import { Timestamp } from "firebase-admin/firestore"
+import { doc } from "firebase/firestore"
+import { getDoc } from "firebase/firestore"
 
 export async function getAllTournaments() {
   try {
@@ -22,6 +24,20 @@ export async function getTournamentById(id: string) {
     return doc.exists ? { id: doc.id, ...doc.data() } : null
   } catch (error) {
     console.error("Error in getTournamentById:", error)
+    return null
+  }
+}
+
+export async function fetchTournamentById(tournamentId: string) {
+  try {
+    const docRef = db.collection("tournaments").doc(tournamentId)
+    const docSnap = await docRef.get()
+
+    if (!docSnap.exists) return null
+    const data = docSnap.data()
+    return JSON.parse(JSON.stringify(data))
+  } catch (error) {
+    console.error("Failed to fetch tournament:", error)
     return null
   }
 }

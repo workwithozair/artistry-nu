@@ -125,7 +125,7 @@ export default function NewTournamentPage() {
                 <Input id="submissionEndDate" name="submissionEndDate" type="date" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="entryFee">Entry Fee ($)</Label>
+                <Label htmlFor="entryFee">Entry Fee (₹)</Label>
                 <Input id="entryFee" name="entryFee" type="number" min="0" step="0.01" defaultValue="25.00" required />
               </div>
             </div>

@@ -4,6 +4,7 @@
 import { db } from "@/lib/firebase/server"
 import { revalidatePath } from "next/cache"
 import { Timestamp } from "firebase-admin/firestore"
+import { doc, getDoc } from "firebase/firestore"
 
 export async function getUserSubmissions(userId: string) {
   try {
@@ -55,6 +56,20 @@ export async function getSubmissionById(id: string) {
     }
   } catch (error) {
     console.error("Error in getSubmissionById:", error)
+    return null
+  }
+}
+
+export async function fetchSubmissionById(submissionId: string) {
+  try {
+    const docRef = db.collection("submissions").doc(submissionId)
+    const docSnap = await docRef.get()
+
+    if (!docSnap.exists) return null
+    const data = docSnap.data()
+    return JSON.parse(JSON.stringify(data))
+  } catch (error) {
+    console.error("Failed to fetch submission:", error)
     return null
   }
 }

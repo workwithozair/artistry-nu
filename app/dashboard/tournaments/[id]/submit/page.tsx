@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -9,14 +9,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
-import { Upload, Loader2 } from "lucide-react"
+import { Upload, Loader2, Link } from "lucide-react"
 import { DatePicker } from "@/components/ui/date-picker"
-import { format } from "date-fns"
-import { ref, uploadBytes } from "firebase/storage"
-import { db, storage } from "@/lib/firebase/client"
-import { addDoc, collection, doc, updateDoc } from "firebase/firestore"
+import { submitArtwork, updatePaymentDetails } from "@/app/actions/create-submission"
+import { getTournamentById } from "@/app/actions/tournaments"
 
 export default function SubmitToTournamentPage() {
+  const router = useRouter()
+  const params = useParams()
+  const tournamentId = params?.id as string
+  const { data: session } = useSession()
+  const { toast } = useToast()
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [applicantName, setApplicantName] = useState("")
@@ -26,11 +30,41 @@ export default function SubmitToTournamentPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const router = useRouter()
-  const params = useParams()
-  const { data: session } = useSession()
-  const { toast } = useToast()
-  const tournamentId = params.id as string
+  const [tournament, setTournament] = useState<any>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!tournamentId) {
+        router.push("/dashboard")
+        return
+      }
+
+
+      const tournamentData = await getTournamentById(tournamentId as string)
+      setTournament(tournamentData)
+    }
+
+    fetchData()
+  }, [tournamentId, router])
+
+  
+  if (!tournament) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle>Tournament Not Found</CardTitle>
+            <CardDescription>The tournament you are looking for does not exist.</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Link href="/dashboard/tournaments">
+              <Button>Back to Tournaments</Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
 
   const loadRazorpay = () =>
     new Promise((resolve) => {
@@ -44,7 +78,7 @@ export default function SubmitToTournamentPage() {
   const triggerPayment = async (submissionId: string) => {
     const res = await fetch("/api/payment/order", {
       method: "POST",
-      body: JSON.stringify({ amount: 10000, submissionId }), // 10000 = ₹100 in paise
+      body: JSON.stringify({ amount: tournament?.entry_fee || 1000, submissionId }), // ₹100
     })
 
     const data = await res.json()
@@ -63,20 +97,32 @@ export default function SubmitToTournamentPage() {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
       amount: data.amount,
       currency: data.currency,
-      name: "Art Tournament",
+      name: tournament?.title,
       description: "Entry Fee",
       order_id: data.id,
       handler: async function (response: any) {
-        const refDoc = doc(db, "submissions", submissionId)
-        await updateDoc(refDoc, {
-          payment_status: "paid",
-            status: "paid",
+        toast({ title: "Payment Successful", description: "Don't refresh the page, it will redirect you to the success page." })
+        const result = await updatePaymentDetails({
+          submissionId,
+          paymentData: {
             paid_amount: data.amount,
-          razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_order_id: response.razorpay_order_id,
-          razorpay_signature: response.razorpay_signature,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+          },
+          tournamentId: tournamentId,
+          userId: session?.user?.id ?? "",
         })
-
+      
+        if (!result.success) {
+          toast({
+            title: "Payment Recorded Failed",
+            description: result.error,
+            variant: "destructive",
+          })
+          return
+        }
+      
         toast({ title: "Payment Successful", description: "Thank you!" })
         router.push(`/dashboard/tournaments/${tournamentId}/payment/success?submissionId=${submissionId}`)
       },
@@ -95,57 +141,43 @@ export default function SubmitToTournamentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!files || !dateOfBirth) {
+      toast({
+        title: "Missing Fields",
+        description: "Please upload files and select your date of birth.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsUploading(true)
     setIsSubmitting(true)
 
     try {
-      if (!session?.user?.email) {
+      const formData = new FormData()
+      formData.append("title", title)
+      formData.append("description", description)
+      formData.append("applicantName", applicantName)
+      formData.append("dateOfBirth", dateOfBirth.toISOString())
+      formData.append("phoneNumber", phoneNumber)
+      formData.append("tournamentId", tournamentId)
+      formData.append("userId", session?.user?.id ?? "")
+      Array.from(files).forEach((file) => formData.append("files", file))
+
+      const result = await submitArtwork(formData)
+
+      if (!result) {
         toast({
-          title: "Not Authenticated",
-          description: "You must be logged in.",
+          title: "Submission Failed",
+          description: "Failed to submit artwork",
           variant: "destructive",
         })
         return
       }
 
-      if (!dateOfBirth) throw new Error("Date of birth is required")
-
-      const userId = session.user.id
-      const submissionRef = await addDoc(collection(db, "submissions"), {
-        title,
-        description,
-        applicant_name: applicantName,
-        date_of_birth: format(dateOfBirth, "yyyy-MM-dd"),
-        phone_number: phoneNumber,
-        user_id: userId,
-        tournament_id: tournamentId,
-        status: "pending",
-        payment_status: "unpaid",
-        created_at: new Date(),
-      })
-
-      if (files && files.length > 0) {
-        setIsUploading(true)
-
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i]
-          const filePath = `submissions/${userId}/${submissionRef.id}/${file.name}`
-          const fileRef = ref(storage, filePath)
-
-          await uploadBytes(fileRef, file)
-
-          await addDoc(collection(db, "submission_files"), {
-            submission_id: submissionRef.id,
-            file_name: file.name,
-            file_path: filePath,
-            file_type: file.type,
-            file_size: file.size,
-            uploaded_at: new Date(),
-          })
-        }
-      }
-
       toast({ title: "Submission Received", description: "Proceeding to payment..." })
-      await triggerPayment(submissionRef.id)
+      await triggerPayment(result.submissionId)
     } catch (error) {
       console.error(error)
       toast({
@@ -171,7 +203,12 @@ export default function SubmitToTournamentPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="applicantName">Applicant Name*</Label>
-                <Input id="applicantName" value={applicantName} onChange={(e) => setApplicantName(e.target.value)} required />
+                <Input
+                  id="applicantName"
+                  value={applicantName}
+                  onChange={(e) => setApplicantName(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dateOfBirth">Date of Birth*</Label>

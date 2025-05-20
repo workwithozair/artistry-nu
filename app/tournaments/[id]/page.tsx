@@ -237,7 +237,7 @@ export default function TournamentPage() {
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">Entry Fee:</span>
                     </div>
-                    <span className="text-sm font-medium">${tournament.entry_fee}</span>
+                    <span className="text-sm font-medium">₹{tournament.entry_fee}</span>
                   </div>
                 </div>
               </div>
@@ -267,15 +267,15 @@ export default function TournamentPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">1st Place:</span>
-                    <span className="text-sm">$500 + Certificate</span>
+                    <span className="text-sm">₹5000 + Certificate</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">2nd Place:</span>
-                    <span className="text-sm">$250 + Certificate</span>
+                    <span className="text-sm">₹2500 + Certificate</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">3rd Place:</span>
-                    <span className="text-sm">$100 + Certificate</span>
+                    <span className="text-sm">₹1000 + Certificate</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Honorable Mentions:</span>
