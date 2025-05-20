@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { format } from "date-fns"
 import { fetchSubmissionById } from "@/app/actions/submissions"
 import { fetchTournamentById } from "@/app/actions/tournaments"
 

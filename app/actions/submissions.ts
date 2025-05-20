@@ -8,7 +8,6 @@ import { doc, getDoc } from "firebase/firestore"
 
 export async function getUserSubmissions(userId: string) {
   try {
-    console.log("userId Heere", userId)
     const submissionsRef = db.collection("submissions")
     const snapshot = await submissionsRef
       .where("user_id", "==", userId)
@@ -19,10 +18,15 @@ export async function getUserSubmissions(userId: string) {
       const submission = doc.data()
       const tournamentRef = db.collection("tournaments").doc(submission.tournament_id)
       const tournamentSnap = await tournamentRef.get()
+      const submissionFilesRef = db.collection("submission_files").where("submission_id", "==", doc.id).limit(1)
+      const submissionFilesSnap = await submissionFilesRef.get()
+      const submissionFile = submissionFilesSnap.docs[0]?.data() || null
+      
       return {
         ...submission,
         id: doc.id,
         tournaments: tournamentSnap.exists ? tournamentSnap.data() : null,
+        submission_file: submissionFile,
       }
     }))
 

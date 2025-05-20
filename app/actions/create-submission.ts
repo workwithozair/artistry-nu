@@ -5,45 +5,45 @@ import { db, storage } from '@/lib/firebase/server';
 import { format } from 'date-fns';
 
 type UpdatePaymentParams = {
-    submissionId: string
-    paymentData: {
-      paid_amount: number
-      razorpay_payment_id: string
-      razorpay_order_id: string
-      razorpay_signature: string
-    },
-    tournamentId: string
-    userId: string
-  }
-  
-  export async function updatePaymentDetails({ submissionId, paymentData, tournamentId, userId }: UpdatePaymentParams) {
-    try {
-      const ref = db.collection("submissions").doc(submissionId)
-      await ref.update({
-        payment_status: "paid",
-        paid_amount: paymentData.paid_amount,
-        razorpay_payment_id: paymentData.razorpay_payment_id,
-      })
+  submissionId: string
+  paymentData: {
+    paid_amount: number
+    razorpay_payment_id: string
+    razorpay_order_id: string
+    razorpay_signature: string
+  },
+  tournamentId: string
+  userId: string
+}
 
-      await db.collection('payments').add({
-        submission_id: submissionId,
-        tournament_id: tournamentId,
-        user_id: userId,
-        payment_date: new Date(),
-        payment_method: 'razorpay',
-        payment_status: 'paid',
-        paid_amount: paymentData.paid_amount,
-        razorpay_payment_id: paymentData.razorpay_payment_id,
-        razorpay_order_id: paymentData.razorpay_order_id,
-        razorpay_signature: paymentData.razorpay_signature,
-      })
+export async function updatePaymentDetails({ submissionId, paymentData, tournamentId, userId }: UpdatePaymentParams) {
+  try {
+    const ref = db.collection("submissions").doc(submissionId)
+    await ref.update({
+      payment_status: "paid",
+      paid_amount: paymentData.paid_amount,
+      razorpay_payment_id: paymentData.razorpay_payment_id,
+    })
 
-      return { success: true }
-    } catch (error) {
-      console.error("Payment update error:", error)
-      return { success: false, error: "Failed to update payment details" }
-    }
+    await db.collection('payments').add({
+      submission_id: submissionId,
+      tournament_id: tournamentId,
+      user_id: userId,
+      payment_date: new Date(),
+      payment_method: 'razorpay',
+      payment_status: 'paid',
+      paid_amount: paymentData.paid_amount,
+      razorpay_payment_id: paymentData.razorpay_payment_id,
+      razorpay_order_id: paymentData.razorpay_order_id,
+      razorpay_signature: paymentData.razorpay_signature,
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error("Payment update error:", error)
+    return { success: false, error: "Failed to update payment details" }
   }
+}
 
 export async function submitArtwork(formData: FormData) {
   const title = formData.get('title') as string;
@@ -75,31 +75,58 @@ export async function submitArtwork(formData: FormData) {
   });
 
   const submissionId = submissionRef.id;
+  const fileUrls: string[] = [];
 
   // Upload files to Firebase Storage
   const bucket = storage.bucket();
   for (const file of files) {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const filePath = `submissions/${tournamentId}/${submissionId}/${file.name}`;
-    const fileRef = bucket.file(filePath);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const filePath = `submissions/${tournamentId}/${submissionId}/${file.name}`;
+      const fileRef = bucket.file(filePath);
 
-    await fileRef.save(buffer, {
-      metadata: {
-        contentType: file.type,
-      },
+      // Upload the file
+      await fileRef.save(buffer, {
+        metadata: {
+          contentType: file.type,
+        },
+      });
+
+      // Make file publicly accessible (optional)
+      await fileRef.makePublic();
+
+      // Get download URL
+      const [downloadUrl] = await fileRef.getSignedUrl({
+        action: 'read',
+        expires: '03-09-2491' // Far future date
+      });
+
+      fileUrls.push(downloadUrl);
+
+      // Add file metadata to Firestore
+      await db.collection('submission_files').add({
+        submission_id: submissionId,
+        file_name: file.name,
+        file_path: filePath,
+        file_url: downloadUrl, // Store the download URL
+        file_type: file.type,
+        file_size: file.size,
+        uploaded_at: new Date(),
+      });
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw new Error('Failed to upload artwork files');
+    }
+  }
+
+  // Update submission with primary image URL (first file)
+  if (fileUrls.length > 0) {
+    await submissionRef.update({
+      imageUrl: fileUrls[0]
     });
+  }
 
-    // Add file metadata to Firestore
-    await db.collection('submission_files').add({
-      submission_id: submissionId,
-      file_name: file.name,
-      file_path: filePath,
-      file_type: file.type,
-      file_size: file.size,
-      uploaded_at: new Date(),
-    });
-
-  return { submissionId };
-}
+  return { submissionId, fileUrls };
 }

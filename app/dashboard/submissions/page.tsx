@@ -1,13 +1,14 @@
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { getSubmissionsByUserId } from "@/app/actions/submissions"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { redirect } from "next/navigation"
+import SubmissionActions from "@/components/submission-action"
+import { Eye } from "lucide-react"
 
 export default async function DashboardSubmissionsPage() {
   const session = await getServerSession(authOptions)
@@ -16,8 +17,8 @@ export default async function DashboardSubmissionsPage() {
     redirect("/login")
   }
 
-  const submissions : any[] = await getSubmissionsByUserId(session.user.id)
-
+  const submissions: any[] = await getSubmissionsByUserId(session.user.id)
+  console.log("submissions", submissions)
   const draftSubmissions = submissions.filter((submission) => submission.status === "draft")
   const pendingSubmissions = submissions.filter((submission) => submission.status === "pending_review")
   const completedSubmissions = submissions.filter((submission) => submission.status === "completed")
@@ -26,12 +27,6 @@ export default async function DashboardSubmissionsPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">My Submissions</h2>
-        {/* <Link href="/dashboard/submissions/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Submission
-          </Button>
-        </Link> */}
       </div>
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
@@ -40,6 +35,7 @@ export default async function DashboardSubmissionsPage() {
           <TabsTrigger value="pending">Pending Review</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
+        
         <TabsContent value="all" className="space-y-4">
           <Card>
             <CardHeader>
@@ -66,7 +62,7 @@ export default async function DashboardSubmissionsPage() {
                             variant={
                               submission.status === "completed"
                                 ? "default"
-                                : submission.status === "pending"
+                                : submission.status === "pending_review"
                                   ? "secondary"
                                   : "outline"
                             }
@@ -74,16 +70,16 @@ export default async function DashboardSubmissionsPage() {
                             {formatStatus(submission.status)}
                           </Badge>
                         </div>
-                        <div>{submission.created_at
-            ? new Date(submission.created_at._seconds * 1000).toLocaleString()
-            : "N/A"}</div>
+                        <div>
+                          {submission.created_at
+                            ? new Date(submission.created_at._seconds * 1000).toLocaleString()
+                            : "N/A"}
+                        </div>
                         <div className="flex justify-end">
-                          <Link href={`/dashboard/submissions/${submission.id}`}>
-                            <Button variant="outline" size="sm">
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </Button>
-                          </Link>
+                          <SubmissionActions 
+                            imageUrl={submission.submission_file?.file_url || 
+                              `https://storage.googleapis.com/artistrynu-9e245.firebasestorage.app/${submission.submission_file?.file_path}` || "https://fastly.picsum.photos/id/128/536/354.jpg?hmac=pCYNKsYogBpCUxVsJbYskR7nC2a1X2Y5YVgCtUOlX8E"}
+                          />
                         </div>
                       </div>
                     ))}

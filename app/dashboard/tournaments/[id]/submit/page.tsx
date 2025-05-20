@@ -288,7 +288,7 @@ export default function SubmitToTournamentPage() {
                   {isUploading ? "Uploading Files..." : "Submitting..."}
                 </>
               ) : (
-                "Submit and Pay ₹100"
+                `Submit and Pay ₹${tournament?.entry_fee}`
               )}
             </Button>
           </CardFooter>
