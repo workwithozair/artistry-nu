@@ -21,7 +21,23 @@ export const getTournaments = getAllTournaments
 export async function getTournamentById(id: string) {
   try {
     const doc = await db.collection("tournaments").doc(id).get()
-    return doc.exists ? { id: doc.id, ...doc.data() } : null
+    if (!doc.exists) return null
+    
+    const data = doc.data() as Record<string, any>
+    
+    // Convert Firestore Timestamps to ISO strings
+    const serializedData = {
+      id: doc.id,
+      ...data,
+      registration_start: data.registration_start?.toDate?.()?.toISOString() || null,
+      registration_end: data.registration_end?.toDate?.()?.toISOString() || null,
+      start_date: data.start_date?.toDate?.()?.toISOString() || null,
+      end_date: data.end_date?.toDate?.()?.toISOString() || null,
+      created_at: data.created_at?.toDate?.()?.toISOString() || null,
+      updated_at: data.updated_at?.toDate?.()?.toISOString() || null,
+    }
+
+    return serializedData
   } catch (error) {
     console.error("Error in getTournamentById:", error)
     return null
@@ -64,10 +80,17 @@ export async function getUserSubmissionForTournament(userId: string, tournamentI
     if (snapshot.empty) return null
 
     const doc = snapshot.docs[0]
-    return {
+    const data = doc.data()
+    
+    // Convert Firestore Timestamp to ISO string
+    const serializedData = {
       id: doc.id,
-      ...doc.data(),
+      ...data,
+      created_at: data.created_at?.toDate?.()?.toISOString() || null,
+      updated_at: data.updated_at?.toDate?.()?.toISOString() || null,
     }
+
+    return serializedData
   } catch (error) {
     console.error("Error in getUserSubmissionForTournament:", error)
     return null

@@ -12,13 +12,14 @@ import { useToast } from "@/components/ui/use-toast"
 import { Upload, Loader2, Link } from "lucide-react"
 import { DatePicker } from "@/components/ui/date-picker"
 import { submitArtwork, updatePaymentDetails } from "@/app/actions/create-submission"
-import { getTournamentById } from "@/app/actions/tournaments"
+import { getTournamentById, getUserSubmissionForTournament } from "@/app/actions/tournaments"
 
 export default function SubmitToTournamentPage() {
   const router = useRouter()
   const params = useParams()
   const tournamentId = params?.id as string
   const { data: session } = useSession()
+  const userId = session?.user?.id 
   const { toast } = useToast()
 
   const [title, setTitle] = useState("")
@@ -31,17 +32,21 @@ export default function SubmitToTournamentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [tournament, setTournament] = useState<any>(null)
-
+  const [existingSubmission, setExistingSubmission] = useState<any>(null)
   useEffect(() => {
     const fetchData = async () => {
-      if (!tournamentId) {
+      if (!tournamentId || !userId) {
         router.push("/dashboard")
         return
       }
 
 
       const tournamentData = await getTournamentById(tournamentId as string)
+      const existingSubmission = await getUserSubmissionForTournament(userId, tournamentId)
+      console.log("existingSubmission", existingSubmission)
+      console.log("tournamentData", tournamentData)
       setTournament(tournamentData)
+      setExistingSubmission(existingSubmission)
     }
 
     fetchData()
@@ -61,6 +66,24 @@ export default function SubmitToTournamentPage() {
               <Button>Back to Tournaments</Button>
             </Link>
           </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
+  if (existingSubmission) {
+    return (
+      <div className="container mx-auto py-8">
+        <Card className="max-w-3xl mx-auto">
+          <CardHeader>
+            <CardTitle>Submission Already Exists</CardTitle>
+            <CardDescription>You have already submitted an artwork for this tournament. Please check your submissions.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* <Link href={`/dashboard/submissions/${existingSubmission.id}`}> */}
+              <Button variant="outline" onClick={() => router.push(`/dashboard/submissions/${existingSubmission.id}`)}>Back to Submissions</Button>
+            {/* </Link> */}
+          </CardContent>
         </Card>
       </div>
     )
