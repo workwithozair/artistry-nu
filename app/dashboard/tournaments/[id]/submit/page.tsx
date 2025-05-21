@@ -43,8 +43,6 @@ export default function SubmitToTournamentPage() {
 
       const tournamentData = await getTournamentById(tournamentId as string)
       const existingSubmission = await getUserSubmissionForTournament(userId, tournamentId)
-      console.log("existingSubmission", existingSubmission)
-      console.log("tournamentData", tournamentData)
       setTournament(tournamentData)
       setExistingSubmission(existingSubmission)
     }
@@ -235,15 +233,9 @@ export default function SubmitToTournamentPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dateOfBirth">Date of Birth*</Label>
-                <DatePicker
-                  id="dateOfBirth"
-                  selected={dateOfBirth}
-                  onSelect={setDateOfBirth}
-                  required
-                  maxDate={new Date()}
-                  fromYear={1900}
-                  toYear={new Date().getFullYear() - 10}
-                />
+                <Input id="dateOfBirth" name="dateOfBirth" type="date"
+                onChange={(e) => setDateOfBirth(new Date(e.target.value))}
+                 required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>

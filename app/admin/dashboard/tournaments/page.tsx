@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { format } from "date-fns"
+import { getAllTournaments } from "@/app/actions/tournaments"
 
 export default function AdminTournamentsPage() {
   const [tournaments, setTournaments] = useState<any[]>([])
@@ -23,12 +24,7 @@ export default function AdminTournamentsPage() {
   const fetchTournaments = async () => {
     setIsLoading(true)
     try {
-      const { data, error } = await supabase.from("tournaments").select("*").order("created_at", { ascending: false })
-
-      if (error) {
-        throw error
-      }
-
+      const data = await getAllTournaments();
       setTournaments(data || [])
     } catch (error) {
       console.error("Error fetching tournaments:", error)
@@ -44,16 +40,14 @@ export default function AdminTournamentsPage() {
 
   const getStatusBadge = (tournament: any) => {
     const now = new Date()
-    const registrationStart = new Date(tournament.registration_start_date)
-    const registrationEnd = new Date(tournament.registration_end_date)
-    const submissionEnd = new Date(tournament.submission_end_date)
+    const registrationStart = new Date(tournament.registration_start)
+    const registrationEnd = new Date(tournament.registration_end)
+    const submissionEnd = new Date(tournament.submission_deadline)
 
     if (now < registrationStart) {
-      return <Badge className="bg-gray-500">Upcoming</Badge>
+      return <Badge className="bg-gray-500">Coming Soon</Badge>
     } else if (now >= registrationStart && now <= registrationEnd) {
-      return <Badge className="bg-green-500">Registration Open</Badge>
-    } else if (now > registrationEnd && now <= submissionEnd) {
-      return <Badge className="bg-blue-500">Submissions Open</Badge>
+      return <Badge className="bg-green-500">Open</Badge>
     } else {
       return <Badge className="bg-red-500">Closed</Badge>
     }
@@ -101,7 +95,7 @@ export default function AdminTournamentsPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Tournaments</h2>
-        <Link href="/admin/tournaments/new">
+        <Link href="/admin/dashboard/tournaments/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
             New Tournament
@@ -130,14 +124,13 @@ export default function AdminTournamentsPage() {
                     <div className="flex justify-between">
                       <p className="text-sm font-medium">Registration Period</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(tournament.registration_start_date)} -
-                        {formatDate(tournament.registration_end_date)}
+                        {formatDate(tournament.registration_start)} - {formatDate(tournament.registration_end)}
                       </p>
                     </div>
                     <div className="flex justify-between">
                       <p className="text-sm font-medium">Submission Deadline</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(tournament.submission_end_date)}
+                        {formatDate(tournament.submission_deadline)}
                       </p>
                     </div>
                   </div>
@@ -153,13 +146,13 @@ export default function AdminTournamentsPage() {
                   </div>
                 </div>
                 <div className="flex justify-end space-x-2 mt-4">
-                  <Link href={`/admin/tournaments/${tournament.id}`}>
+                  <Link href={`/admin/dashboard/tournaments/${tournament.id}`}>
                     <Button variant="outline" size="sm">
                       <Eye className="mr-2 h-4 w-4" />
                       View
                     </Button>
                   </Link>
-                  <Link href={`/admin/tournaments/${tournament.id}/edit`}>
+                  <Link href={`/admin/dashboard/tournaments/${tournament.id}/edit`}>
                     <Button variant="outline" size="sm">
                       <Edit className="mr-2 h-4 w-4" />
                       Edit

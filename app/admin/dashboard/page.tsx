@@ -7,12 +7,13 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/components/ui/use-toast"
 import { BarChart, CalendarDays, Users, Award, FileText, CreditCard } from "lucide-react"
+import { fetchDashboardStats } from "@/app/actions/admin-stat"
 
 export default function AdminDashboardPage() {
   const { data: session } = useSession()
   const user = session?.user
   const { toast } = useToast()
-  const supabase = createBrowserClient()
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalTournaments: 0,
@@ -24,62 +25,24 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetchDashboardStats()
-  }, [])
-
-  const fetchDashboardStats = async () => {
-    setIsLoading(true)
-    try {
-      // Get total users
-      const { count: userCount, error: userError } = await supabase
-        .from("users")
-        .select("*", { count: "exact", head: true })
-
-      // Get total tournaments
-      const { count: tournamentCount, error: tournamentError } = await supabase
-        .from("tournaments")
-        .select("*", { count: "exact", head: true })
-
-      // Get total submissions
-      const { count: submissionCount, error: submissionError } = await supabase
-        .from("submissions")
-        .select("*", { count: "exact", head: true })
-
-      // Get pending submissions
-      const { count: pendingCount, error: pendingError } = await supabase
-        .from("submissions")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending")
-
-      // Get total certificates
-      const { count: certificateCount, error: certificateError } = await supabase
-        .from("certificates")
-        .select("*", { count: "exact", head: true })
-
-      // Get total payments
-      const { count: paymentCount, error: paymentError } = await supabase
-        .from("payments")
-        .select("*", { count: "exact", head: true })
-
-      setStats({
-        totalUsers: userCount || 0,
-        totalTournaments: tournamentCount || 0,
-        totalSubmissions: submissionCount || 0,
-        totalCertificates: certificateCount || 0,
-        totalPayments: paymentCount || 0,
-        pendingSubmissions: pendingCount || 0,
-      })
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch dashboard statistics",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+    const getStats = async () => {
+      setIsLoading(true)
+      try {
+        const data = await fetchDashboardStats()
+        setStats(data)
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error)
+        toast({
+          title: "Error",
+          description: "Failed to fetch dashboard statistics",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }
+    getStats()
+  }, [])
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -151,7 +114,7 @@ export default function AdminDashboardPage() {
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? "..." : `$₹{stats.totalPayments * 25}`}</div>
+                <div className="text-2xl font-bold">{isLoading ? "..." : `₹${stats.totalPayments * 25}`}</div>
                 <p className="text-xs text-muted-foreground">From {stats.totalPayments} payments</p>
               </CardContent>
             </Card>

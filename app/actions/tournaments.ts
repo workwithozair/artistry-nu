@@ -3,8 +3,8 @@
 import { db } from "@/lib/firebase/server"
 import { revalidatePath } from "next/cache"
 import { Timestamp } from "firebase-admin/firestore"
-import { doc } from "firebase/firestore"
-import { getDoc } from "firebase/firestore"
+import { format } from "date-fns"
+import { storage } from "@/lib/firebase/server"
 
 export async function getAllTournaments() {
   try {
@@ -170,3 +170,66 @@ export async function registerForTournament(formData: FormData) {
     }
   }
 }
+
+
+
+export async function createTournament(formData: FormData) {
+  const title = formData.get('title') as string;
+  const description = formData.get('description') as string;
+  const category = formData.get('category') as string;
+  const registrationStartDate = formData.get('registrationStartDate') as string;
+  const registrationEndDate = formData.get('registrationEndDate') as string;
+  const submissionEndDate = formData.get('submissionEndDate') as string;
+  const entryFee = parseFloat(formData.get('entryFee') as string);
+  const files = formData.getAll('files') as File[];
+
+  if (!title || !description || !category || !registrationStartDate || !registrationEndDate || !submissionEndDate || !entryFee || files.length === 0) {
+    throw new Error('Missing required fields');
+  }
+
+  // Create Firestore document for tournament
+  const tournamentRef = await db.collection('tournaments').add({
+    title,
+    description,
+    category,
+    registration_start: format(new Date(registrationStartDate), 'yyyy-MM-dd'),
+    registration_end: format(new Date(registrationEndDate), 'yyyy-MM-dd'),
+    submission_deadline: format(new Date(submissionEndDate), 'yyyy-MM-dd'),
+    entry_fee: entryFee,
+    created_at: new Date(),
+    updated_at: new Date(),
+    status: "coming_soon",
+  });
+
+  const tournamentId = tournamentRef.id;
+  const bucket = storage.bucket();
+  const bannerUrls: string[] = [];
+
+  for (const file of files) {
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const filePath = `tournaments/${tournamentId}/${file.name}`;
+    const fileRef = bucket.file(filePath);
+
+    await fileRef.save(buffer, {
+      metadata: { contentType: file.type },
+    });
+
+    await fileRef.makePublic();
+
+    const [downloadUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: '03-09-2491',
+    });
+
+    bannerUrls.push(downloadUrl);
+  }
+
+  await tournamentRef.update({
+    banner_images: bannerUrls,
+    image_url: bannerUrls[0],
+  });
+
+  return { tournamentId, bannerUrls };
+}
+
